@@ -1,0 +1,4 @@
+interface:
+  display_name: "npm Deps Update"
+  short_description: "Scan npm dependencies for vulnerabilities and updates, review a report, then apply approved updates with tests"
+  default_prompt: "Use $npm-deps-update in check mode: detect the package manager and verification commands, read docs/dependencies/policy.md, run audit and outdated, research breaking changes for every major, write docs/dependencies/YYYY-MM-DD-report.md with default decisions, and stop for review without changing the project."
