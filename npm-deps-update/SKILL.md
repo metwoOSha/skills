@@ -1,6 +1,6 @@
 ---
 name: npm-deps-update
-description: Two-phase npm dependency maintenance: scan for vulnerabilities and outdated packages, write a review report to docs/, then apply only approved updates with tests. Use for npm audit, outdated deps, fix vulnerabilities.
+description: "Two-phase npm dependency maintenance: scan for vulnerabilities and outdated packages, write a review report to docs/, then apply only approved updates with tests. Use for npm audit, outdated deps, fix vulnerabilities."
 ---
 
 # npm dependency check & update
