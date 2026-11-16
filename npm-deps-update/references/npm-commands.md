@@ -54,7 +54,7 @@ Fix method from `fixAvailable`:
 |---|---|
 | `true` | `audit fix` (within existing ranges) |
 | `{ isSemVerMajor: false }` | bump `<name>` to `<version>` |
-| `{ isSemVerMajor: true }` | major of `<name>` → goes to the Major table as `review` |
+| `{ isSemVerMajor: true }` | compare `version` with the installed `<name>` first: **higher** → major update, Major table, `review`; **lower** → `downgrade` fix (npm found no fixed newer release and offers an older one), Major table, `review`, Note says which features/fixes the downgrade drops |
 | `false` | `override` if a patched version of the vulnerable package exists and satisfies its dependents' ranges; otherwise "Not fixable now" |
 
 Exit code is non-zero when vulnerabilities exist. That is not an error.
@@ -75,7 +75,19 @@ Exit code is non-zero when vulnerabilities exist. That is not an error.
 ```
 
 `current` missing → package not installed; run a clean install first.
-Update type comes from comparing `current` with the target (`latest`, or `wanted` if capped).
+Update type comes from comparing `current` with the target (`latest`, or `wanted` if capped):
+
+| Change | Type |
+|---|---|
+| `1.2.3 → 1.2.4` | patch |
+| `1.2.3 → 1.3.0` | minor |
+| `1.2.3 → 2.0.0` | major |
+| `0.4.2 → 0.4.3` | patch |
+| `0.4.2 → 0.5.0` | **major** (0.x minor is breaking) |
+| `0.0.3 → 0.0.4` | **major** (0.0.x any change is breaking) |
+| target lower than current | **downgrade** |
+
+Note: `^0.4.2` already only allows `0.4.x`, so `wanted` never crosses a 0.x minor; `latest` can.
 Exit code 1 when anything is outdated. That is not an error.
 
 ## Overrides (npm)
@@ -106,6 +118,31 @@ Update as one group, one row, one batch:
 - `prisma`, `@prisma/client`
 
 Also group any packages whose peer ranges pin each other (check `peerDependencies`).
+
+## Cross-project dependencies
+
+Signals that a dependency is shared with other repos:
+
+- spec is `git+...`, `github:...`, `file:...`, `link:...`, `workspace:...`
+- package is under the organisation's scope (look at `name` of this repo and its private
+  registry in `.npmrc`)
+- this repo is a library: its `peerDependencies` ranges are a contract with consumers;
+  widening or bumping them affects every consumer
+- guard / check scripts in the repo or CI that assert versions (grep CI config and `scripts/`
+  for package names and version strings)
+- comments or docs saying "keep in sync with ..."
+
+## devDependencies used at runtime
+
+```bash
+# list devDependencies
+node -e "console.log(Object.keys(require('./package.json').devDependencies||{}).join('\n'))"
+# then for each name, search runtime source only
+grep -rlE "from ['\"]<name>(/|['\"])|require\(['\"]<name>" src app lib pages --include=*.{ts,tsx,js,jsx,mjs,cjs}
+```
+
+Exclude `*.test.*`, `*.spec.*`, `*.stories.*`, `__tests__/`, `__mocks__/`, config files and
+`scripts/`. Type-only imports (`import type`) are fine as dev deps.
 
 ## Peer dependency conflicts
 

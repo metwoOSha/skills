@@ -1,7 +1,8 @@
 # Dependency report — YYYY-MM-DD
 
 **Status:** AWAITING REVIEW   <!-- AWAITING REVIEW → APPROVED → APPLIED / PARTIALLY APPLIED -->
-**Project:** <name> · <package manager + version> · Node <version> · branch <current>
+**Project:** <name> · <package manager + version> · Node <version>
+**Scanned:** branch <current> · base <base branch> @ <commit> · behind base: <n> commits
 **Verification:** `<typecheck>` · `<lint>` · `<test>` · `<build>`
 
 ## Summary
@@ -27,8 +28,10 @@ when skipping. `review` rows must be decided before apply. Or tell Claude in cha
 
 ## 3. Updates — major
 
-| # | Package (group) | Current | Target | Breaking changes affecting us | Effort | Decision | Note |
-|---|---|---|---|---|---|---|---|
+Includes real majors, `0.x` minor bumps, downgrade fixes and packages shared with other projects.
+
+| # | Package (group) | Current | Target | Kind (major / 0.x / downgrade / shared) | Breaking changes affecting us | Effort | Decision | Note |
+|---|---|---|---|---|---|---|---|---|
 
 ### Migration notes
 
@@ -44,9 +47,26 @@ when skipping. `review` rows must be decided before apply. Or tell Claude in cha
 | Package | Advisory | Why | Suggested action |
 |---|---|---|---|
 
-## 6. Policy rules to revisit
+## 6. Shared with other projects
 
-## 7. Apply results
+| Package | Shared with / how | Constraint | Impact of updating |
+|---|---|---|---|
+
+## 7. Dependency hygiene
+
+| Package | Finding (dev dep used at runtime / unused / duplicated) | Where | Suggested action |
+|---|---|---|---|
+
+## 8. Suggested policy rules
+
+Accept or reject each; accepted rules are copied to `policy.md`.
+
+| Package | Proposed rule | Reason | Accept? |
+|---|---|---|---|
+
+## 9. Policy rules to revisit
+
+## 10. Apply results
 
 _(filled in by the apply phase)_
 

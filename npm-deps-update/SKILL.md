@@ -51,14 +51,21 @@ Dependency check:
 - [ ] 1. Detect environment
 - [ ] 2. Read policy.md
 - [ ] 3. Scan vulnerabilities
-- [ ] 4. Scan outdated
+- [ ] 4. Scan outdated (+ 4b cross-project and hygiene checks)
 - [ ] 5. Research majors and risky fixes
 - [ ] 6. Write report, stop
 ```
 
 ### 1. Detect environment
 
+**Branch freshness first.** `git fetch`, find the base branch (the one the team merges into:
+`dev`, `develop`, `main`; ask if unclear) and compare: `git rev-list --count HEAD..origin/<base>`.
+If the current branch is behind, or `package.json` / the lockfile differ from the base, stop and
+ask: update the branch, or scan `origin/<base>` instead. A scan of a stale branch reports
+problems that are already fixed.
+
 Record in the report header:
+- branch, base branch, and the base commit the scan ran against
 - package manager (from the lockfile) and its version; workspaces, if any
 - Node version vs `engines` / `.nvmrc` (flag a mismatch)
 - verification commands from `package.json`: typecheck, lint, test, build (Phase 2 runs exactly these)
@@ -74,7 +81,10 @@ flagged ⚠ in the summary. Rules past `Review by` go under "Policy rules to rev
 
 Run the audit (plus `npm audit signatures` on npm ≥ 9). Per advisory record: severity,
 advisory id + URL, installed and fixed versions, direct or transitive (with the chain),
-prod or dev, and the fix method derived from `fixAvailable` (see references). For
+prod or dev, and the fix method derived from `fixAvailable` (see references).
+**Always compare `fixAvailable.version` with the installed version of that package:** npm
+sometimes "fixes" by going back to an older release. A lower version is a `downgrade` fix, goes
+to the Major table as `review`, and the row says what would be lost. For
 High/Critical, optionally grep whether the vulnerable API is actually used and mark
 "reachable / not reachable".
 
@@ -82,6 +92,25 @@ High/Critical, optionally grep whether the vulnerable API is actually used and m
 
 Per package: current, wanted, latest, update type (patch / minor / major), prod or dev.
 Group packages that must move together (see references) and check peer ranges between them.
+
+Update type follows semver's breaking rules, not the digit that changed:
+- `0.y.z`: a minor bump (`0.4.x → 0.5.0`) is **breaking** → classify as major
+- `0.0.z`: any bump is breaking → classify as major
+- pre-releases (`-beta`, `-rc`) are never targets unless already installed
+
+### 4b. Cross-project and hygiene checks
+
+- **Shared with other projects.** Find dependencies that tie this repo to others: internal
+  packages (org scope such as `@company/*`, `git+`, `file:`, `link:`, `workspace:` specs),
+  this repo's own `peerDependencies` if it is a library (consumers must accept the new range),
+  and packages the team keeps on one version across repos (check for shared configs, guard
+  scripts, or ask). Mark these rows "shared: <where>" and default them to `review`.
+  If sibling repos are not discoverable, ask the user once which repos share dependencies.
+- **devDependencies used at runtime.** Grep runtime source (not tests, stories, configs, scripts)
+  for imports of devDependencies. Each hit is a hygiene finding: it should probably be a
+  dependency (matters for servers, libraries and anything installed with `--omit=dev`).
+- **Unused or duplicated.** Note obvious ones (declared but never imported; same package in both
+  dependencies and devDependencies). Report only; never remove without a decision.
 
 ### 5. Research majors and risky fixes
 
@@ -103,12 +132,17 @@ Copy [assets/templates/report.md](assets/templates/report.md) to
 | Case | Default |
 |---|---|
 | Vulnerability, non-breaking fix | `update` |
-| Patch / minor | `update` |
-| Major (including a vuln fix that needs one) | `review` |
+| Patch / minor (real, per the semver rules above) | `update` |
+| Major, `0.x` minor, downgrade fix, or shared with other projects | `review` |
 | Held back by policy | `skip` |
 | No fix available | `n/a` |
 
 `review` means nothing happens until a human changes it to `update` or `skip`.
+
+When the scan shows a lasting reason to hold something back (a major blocked by another
+library, a version pinned for another repo, an accepted advisory), add it to
+"Suggested policy rules" in the report. Suggestions are never written to `policy.md` until
+the user accepts them.
 
 Tell the user briefly: report path, counts (vulns by severity; patch / minor / major),
 the ⚠ items, and how to review: edit the Decision column, or say it in chat
@@ -121,7 +155,12 @@ the ⚠ items, and how to review: edit the Decision column, or say it in chat
 - When a package is skipped, ask once: **only this time, or add a rule to policy.md?**
   For a rule, record the reason (ask if none), today's date and a review date if given.
 - Skipping a package with a vulnerability → say plainly that it stays open; note it in the row.
+- Accepted "Suggested policy rules" → copy them to `policy.md`; mark rejected ones in the report.
 - User approves → set report status to `APPROVED`.
+- `policy.md` and reports are meant to be committed (the policy is shared team state; reports
+  are the history of decisions). Commit them with the dependency branch in Phase 2, or on their
+  own if nothing gets applied. Never commit them into an unrelated feature branch; ask if the
+  current branch is not a dependency branch.
 
 ## Phase 2: Apply
 
@@ -140,7 +179,10 @@ Dependency apply:
 
 - Latest report has status `APPROVED`, or the user confirms now. Any row still `review` → ask.
 - Working tree clean (`git status`); otherwise stop and ask.
-- Create branch `chore/deps-YYYY-MM-DD`.
+- Base branch still matches the commit the report was made against. If it moved and touched
+  `package.json` or the lockfile, re-run Check first.
+- Create branch `chore/deps-YYYY-MM-DD` from the up-to-date base (or the name the team's
+  ticket convention requires).
 
 ### 2. Baseline
 
