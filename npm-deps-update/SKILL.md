@@ -24,6 +24,10 @@ docs/dependencies/
   YYYY-MM-DD-report.md      one report per check run
 ```
 
+A second Check on the same day: overwrite today's report only while its status is
+`AWAITING REVIEW`. If it is `APPROVED` or later, it holds decisions; write
+`YYYY-MM-DD-2-report.md` instead and say so.
+
 Create `docs/dependencies/` if missing, and `policy.md` from
 [assets/templates/policy.md](assets/templates/policy.md). If the project keeps docs elsewhere
 (`doc/`, `documentation/`), use that and say so.
@@ -49,7 +53,7 @@ Commands, JSON fields and pnpm/yarn equivalents: [references/npm-commands.md](re
 ```
 Dependency check:
 - [ ] 1. Detect environment
-- [ ] 2. Read policy.md
+- [ ] 2. Read policy.md (+ 2b previous report)
 - [ ] 3. Scan vulnerabilities
 - [ ] 4. Scan outdated (+ 4b cross-project and hygiene checks)
 - [ ] 5. Research majors and risky fixes
@@ -76,6 +80,30 @@ Record in the report header:
 Each rule pre-fills its packages' Decision as `skip` (or caps the target) and lists them under
 "Held back by policy" with the reason. A held-back package with a known vulnerability is
 flagged ⚠ in the summary. Rules past `Review by` go under "Policy rules to revisit".
+
+### 2b. Read the previous report
+
+Runs are meant to repeat, so a check should only ask a human about what changed. Find the
+latest earlier report in `docs/dependencies/` (by date in the file name). None → first run,
+skip this step and leave "Since last report" out.
+
+From it take: date, status, base commit, every row's package, target and Decision, the
+Blockers table, and Apply results if any. Then, after steps 3–4, compare (rules below) and fill
+"Since last report". Carrying over a decision is not applying it: carried-over rows are still
+listed in their table so the report stays complete.
+
+| Previous row | Now | Default Decision |
+|---|---|---|
+| `skip` | same target version | `skip`, Note "carried over from <date>" |
+| `skip` | newer target available | the normal default (table in step 6), Note "skipped <date> at <old target>" |
+| `skip` on a vulnerability | still open | `skip` carried over, and still ⚠ in the summary: an accepted risk is not a fixed one |
+| `update` in an `APPLIED` report | still outdated | the normal default, Note "applied <date> but outdated again" |
+| `failed` | any | `review`, Note "failed <date>: <reason>" |
+| held by a blocker | blocker resolved | the normal default, Note "unblocked: <what changed>" |
+| anything in a report that never reached `APPROVED` | — | nothing carries over; that report was not reviewed |
+
+A carried-over decision never outranks `policy.md`, and a carried-over `skip` never hides a new
+vulnerability on the same package: that vulnerability gets its own row with the normal default.
 
 ### 3. Scan vulnerabilities
 
@@ -106,15 +134,28 @@ Update type follows semver's breaking rules, not the digit that changed:
   and packages the team keeps on one version across repos (check for shared configs, guard
   scripts, or ask). Mark these rows "shared: <where>" and default them to `review`.
   If sibling repos are not discoverable, ask the user once which repos share dependencies.
-- **devDependencies used at runtime.** Grep runtime source (not tests, stories, configs, scripts)
-  for imports of devDependencies. Each hit is a hygiene finding: it should probably be a
-  dependency (matters for servers, libraries and anything installed with `--omit=dev`).
-- **Unused or duplicated.** Note obvious ones (declared but never imported; same package in both
-  dependencies and devDependencies). Report only; never remove without a decision.
+- **devDependencies used at runtime.** Grep runtime source (not tests, stories, configs, scripts,
+  test helpers) for imports of devDependencies. Each hit is a hygiene finding: it should probably
+  be a dependency (matters for servers, libraries and anything installed with `--omit=dev`).
+  For a library with a build, confirm against the build output: a package that ends up in `dist`
+  ships at runtime whatever its source file is called. Recipe and exclusions in references.
+- **Unused or duplicated.** Same package in both dependencies and devDependencies; packages
+  declared but never used. A plain text search over-reports unused packages: rule out the
+  implicit uses listed in references before reporting one, or use `knip` / `depcheck` if the
+  project already has it. Report only; never remove without a decision.
 
 ### 5. Research majors and risky fixes
 
-For every major update, including vulnerability fixes that need one:
+Research is the expensive step; spend it only where an update can actually happen. Skip the
+changelog reading for a major that is already decided by something else, and say why in its row
+("not researched: <reason>"):
+- held back by `policy.md`
+- unused (§ hygiene): the decision is removal, not an update
+- blocked by a prerequisite the project does not meet yet (Node version, a shared package that
+  must move in other repos first); research it in the run after the blocker is resolved
+- a downgrade fix
+
+For every other major update, including vulnerability fixes that need one:
 - read the official changelog / release notes / migration guide for the exact versions
   (package's GitHub releases and docs over blogs); record URLs
 - grep the codebase for the APIs the breaking changes touch; report only those that affect
@@ -139,13 +180,18 @@ Copy [assets/templates/report.md](assets/templates/report.md) to
 
 `review` means nothing happens until a human changes it to `update` or `skip`.
 
+When one condition blocks several rows (a Node version the targets require, a package that must
+move in other repos first, a browser baseline), write it once under "Blockers" with the rows it
+blocks, instead of repeating it in every Note.
+
 When the scan shows a lasting reason to hold something back (a major blocked by another
 library, a version pinned for another repo, an accepted advisory), add it to
 "Suggested policy rules" in the report. Suggestions are never written to `policy.md` until
 the user accepts them.
 
 Tell the user briefly: report path, counts (vulns by severity; patch / minor / major),
-the ⚠ items, and how to review: edit the Decision column, or say it in chat
+what changed since the last report (new / resolved vulnerabilities, rows needing a decision vs
+carried over), the blockers and ⚠ items, and how to review: edit the Decision column, or say it in chat
 ("skip react", "update next only to 15.3"). Stop.
 
 ## Review (between phases)

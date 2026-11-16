@@ -11,10 +11,32 @@
 - Outdated: N (patch a, minor b, major c)
 - ⚠ Needs attention: <held-back or unfixable packages with vulnerabilities>
 
+## Since last report
+
+<!-- Leave out on the first run. -->
+
+**Previous:** [YYYY-MM-DD-report.md](YYYY-MM-DD-report.md) · status <status> · base <commit>
+
+- Vulnerabilities: <n> new, <n> resolved, <n> still open (of which <n> accepted earlier)
+- Needs a decision now: <n> rows (new packages, new target versions, unblocked, failed last time)
+- Carried over unchanged: <n> rows (`skip` at the same target)
+- Applied last time and outdated again: <list or "none">
+- Blockers resolved since: <list or "none">
+
 ## How to review
 
 Edit **Decision** in each row: `update`, `skip`, or `update to <version>`. Add a reason to Note
 when skipping. `review` rows must be decided before apply. Or tell Claude in chat.
+Rows marked "carried over" repeat an earlier decision and need no action unless you want to
+change it.
+
+## Blockers
+
+Conditions that hold back several rows at once. Resolve these first; the rows they block stay
+`review` until then.
+
+| Blocker | Rows it blocks | What resolves it |
+|---|---|---|
 
 ## 1. Vulnerabilities
 
@@ -30,7 +52,7 @@ when skipping. `review` rows must be decided before apply. Or tell Claude in cha
 
 Includes real majors, `0.x` minor bumps, downgrade fixes and packages shared with other projects.
 
-| # | Package (group) | Current | Target | Kind (major / 0.x / downgrade / shared) | Breaking changes affecting us | Effort | Decision | Note |
+| # | Package (group) | Current | Target | Kind (major / 0.x / downgrade / shared) | Breaking changes affecting us (or "not researched: <reason>") | Effort | Decision | Note |
 |---|---|---|---|---|---|---|---|---|
 
 ### Migration notes

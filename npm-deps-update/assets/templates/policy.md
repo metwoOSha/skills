@@ -7,4 +7,8 @@ Rule forms: `skip` (no updates at all), `stay on <major>.x`, `max <version>`,
 
 | Package | Rule | Reason | Added | Review by |
 |---|---|---|---|---|
-| _example: react, react-dom_ | _stay on 18.x_ | _waiting for library X to support 19_ | _2026-11-16_ | _2027-02-01_ |
+
+<!--
+Example row (copy into the table above; a row here is not a rule):
+| react, react-dom | stay on 18.x | waiting for library X to support 19 | 2026-11-16 | 2027-02-01 |
+-->

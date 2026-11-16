@@ -144,6 +144,33 @@ grep -rlE "from ['\"]<name>(/|['\"])|require\(['\"]<name>" src app lib pages --i
 Exclude `*.test.*`, `*.spec.*`, `*.stories.*`, `__tests__/`, `__mocks__/`, config files and
 `scripts/`. Type-only imports (`import type`) are fine as dev deps.
 
+Test helpers live next to runtime code under names the patterns above miss
+(`*Fixtures.ts`, `test-utils.ts`, `setupTests.ts`, `*.mock.ts`). Treat a hit as a test helper,
+not runtime code, when the file itself imports a test runner (`vitest`, `jest`,
+`@testing-library/*`) or its name contains `fixture`, `test-util`, `mock` or `setup`.
+
+For a library with a build, confirm against the output instead of trusting file names: a
+devDependency that is not in the bundler's `external` list and is imported by any built entry
+ends up inside `dist`. After a build, `grep -rl "<distinctive export or string of the package>" dist`
+settles it; so does the bundler's manifest or stats file when the project emits one.
+
+## Unused dependencies
+
+Declared but never imported is a candidate, not a finding. A text search for the package name
+misses these uses, so rule them out first:
+
+| Used without its name in an import | Where to look |
+|---|---|
+| ESLint plugins and configs by short name (`plugin:react-hooks/…`, `'prettier'`, `storybook`) | ESLint config |
+| Tools a framework loads implicitly (`sass` / `less` for style files, `@vitest/coverage-*` for `--coverage`, `postcss` plugins, Babel presets) | build / test config, style file extensions |
+| CLIs run from scripts (`tsc` → `typescript`, `changeset` → `@changesets/cli`) | `package.json` scripts, CI config, git hooks |
+| Peer dependencies of another installed package (`@testing-library/dom` for `@testing-library/react`) | `peerDependencies` of the other direct deps |
+| `@types/*` packages | the matching runtime package, `tsconfig` `types` |
+| Storybook addons, Vite/Webpack plugins by string | `.storybook/main.*`, bundler config |
+
+If the project already has `knip` or `depcheck`, prefer its result and still check the table
+for anything it flags. Do not install either one just for the check.
+
 ## Peer dependency conflicts
 
 `ERESOLVE` on install means the target breaks a peer range. Do not bypass it. Find which
